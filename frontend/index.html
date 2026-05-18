@@ -1,1 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WAVT — Web App Vulnerability Tester</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #f0f4ff;
+      --surface:  #ffffff;
+      --surface2: #f7f9ff;
+      --border:   #dde4f5;
+      --indigo:   #4f6ef7;
+      --indigo-lt:#eef1fe;
+      --teal:     #0db87f;
+      --teal-lt:  #e6faf4;
+      --red:      #f03e5a;
+      --red-lt:   #fff0f3;
+      --amber:    #f59e0b;
+      --amber-lt: #fffbeb;
+      --blue:     #3b82f6;
+      --blue-lt:  #eff6ff;
+      --text:     #1e2640;
+      --text2:    #5a6480;
+      --text3:    #9aa3bf;
+      --mono:     'DM Mono', monospace;
+      --sans:     'Outfit', sans-serif;
+      --shadow:   0 2px 12px rgba(79,110,247,0.1);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 40px 16px 60px;
+    }
+    .wrapper { max-width: 780px; margin: 0 auto; }
 
+    /* ── HEADER ── */
+    header { text-align:center; margin-bottom:40px; }
+    .logo-row {
+      display:inline-flex; align-items:center; gap:14px; margin-bottom:10px;
+    }
+    .logo-badge {
+      width:48px; height:48px;
+      background: linear-gradient(135deg, var(--indigo), #8b5cf6);
+      border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:22px;
+      box-shadow: 0 4px 16px rgba(79,110,247,0.3);
+    }
+    .logo-text {
+      font-family:var(--mono); font-size:30px;
+      letter-spacing:8px; color:var(--indigo);
+    }
+    .tagline {
+      font-family:var(--mono); font-size:11px;
+      letter-spacing:2px; color:var(--text3);
+    }
+
+    /* ── CARD ── */
+    .card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:16px; padding:28px; margin-bottom:24px;
+      box-shadow:var(--shadow);
+    }
+    .card-title {
+      font-size:13px; font-weight:700; letter-spacing:1px;
+      color:var(--text3); text-transform:uppercase; margin-bottom:18px;
+    }
+
+    /* ── SCAN FORM ── */
+    .input-row { display:flex; gap:10px; margin-bottom:12px; }
+    .target-input {
+      flex:1; background:var(--surface2);
+      border:1.5px solid var(--border); border-radius:10px;
+      padding:13px 18px; font-family:var(--mono); font-size:13px;
+      color:var(--text); outline:none; transition:all 0.2s;
+    }
+    .target-input:focus {
+      border-color:var(--indigo);
+      box-shadow:0 0 0 4px rgba(79,110,247,0.1);
+    }
+    .target-input::placeholder { color:var(--text3); }
+    .scan-btn {
+      background:linear-gradient(135deg, var(--indigo), #8b5cf6);
+      color:#fff; border:none; border-radius:10px;
+      padding:13px 28px; font-family:var(--sans);
+      font-size:14px; font-weight:700; letter-spacing:1px;
+      cursor:pointer; transition:all 0.2s; white-space:nowrap;
+    }
+    .scan-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(79,110,247,0.4); }
+    .scan-btn:disabled { background:#ccc; color:#888; transform:none; box-shadow:none; cursor:not-allowed; }
+    .warning { font-family:var(--mono); font-size:10px; color:var(--text3); }
+
+    /* ── STATUS ── */
+    .status-msg {
+      background:var(--indigo-lt); border:1.5px solid rgba(79,110,247,0.25);
+      border-radius:12px; padding:14px 20px; margin-bottom:24px;
+      font-family:var(--mono); font-size:12px; color:var(--indigo);
+      display:none; align-items:center; gap:10px;
+    }
+    .status-msg.visible { display:flex; }
+    .spinner {
+      width:16px; height:16px;
+      border:2px solid rgba(79,110,247,0.25);
+      border-top-color:var(--indigo);
+      border-radius:50%; animation:spin 0.8s linear infinite; flex-shrink:0;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── ERROR BOX ── */
+    .error-box {
+      background:var(--red-lt); border:1.5px solid rgba(240,62,90,0.25);
+      border-radius:12px; padding:14px 20px; margin-bottom:24px;
+      font-family:var(--mono); font-size:12px; color:var(--red);
+      display:none;
+    }
+    .error-box.visible { display:block; }
+
+    /* ── RESULTS ── */
+    #results { display:none; }
+    #results.visible { display:block; }
+    .section-title {
+      font-size:13px; font-weight:700; letter-spacing:1px;
+      color:var(--text3); text-transform:uppercase; margin-bottom:14px;
+    }
+
+    /* ── SUMMARY BOXES ── */
+    .summary-row {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:12px; margin-bottom:28px;
+    }
+    .count-box {
+      border-radius:14px; padding:20px 16px;
+      text-align:center; border:1.5px solid transparent;
+    }
+    .count-num {
+      font-family:var(--mono); font-size:36px;
+      font-weight:500; line-height:1; margin-bottom:6px;
+    }
+    .count-label {
+      font-size:11px; font-weight:700;
+      letter-spacing:1px; text-transform:uppercase;
+    }
+    .count-box.critical { background:var(--red-lt); border-color:rgba(240,62,90,0.2); }
+    .count-box.critical .count-num   { color:var(--red); }
+    .count-box.critical .count-label { color:rgba(240,62,90,0.7); }
+    .count-box.high { background:var(--amber-lt); border-color:rgba(245,158,11,0.25); }
+    .count-box.high .count-num   { color:var(--amber); }
+    .count-box.high .count-label { color:rgba(245,158,11,0.7); }
+    .count-box.medium { background:#fffbf0; border-color:rgba(251,191,36,0.3); }
+    .count-box.medium .count-num   { color:#d97706; }
+    .count-box.medium .count-label { color:rgba(217,119,6,0.7); }
+    .count-box.low { background:var(--blue-lt); border-color:rgba(59,130,246,0.2); }
+    .count-box.low .count-num   { color:var(--blue); }
+    .count-box.low .count-label { color:rgba(59,130,246,0.7); }
+
+    /* ── TARGET INFO BAR ── */
+    .info-bar {
+      background:var(--indigo-lt); border:1px solid rgba(79,110,247,0.2);
+      border-radius:10px; padding:12px 18px; margin-bottom:20px;
+      font-family:var(--mono); font-size:12px; color:var(--indigo);
+      display:flex; gap:24px; flex-wrap:wrap;
+    }
+    .info-bar span { color:var(--text2); }
+    .info-bar strong { color:var(--indigo); }
+
+    /* ── FINDINGS TABLE ── */
+    .table-wrap {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:16px; overflow:hidden;
+      margin-bottom:28px; box-shadow:var(--shadow);
+    }
+    .table-header {
+      display:grid; grid-template-columns:80px 1fr 110px 130px;
+      padding:12px 20px; background:var(--surface2);
+      border-bottom:1px solid var(--border);
+      font-size:11px; font-weight:700; letter-spacing:1px;
+      color:var(--text3); text-transform:uppercase;
+    }
+    .table-row {
+      display:grid; grid-template-columns:80px 1fr 110px 130px;
+      padding:16px 20px; border-bottom:1px solid var(--border);
+      align-items:center; transition:background 0.15s;
+    }
+    .table-row:last-child { border-bottom:none; }
+    .table-row:hover { background:var(--surface2); }
+    .port-chip {
+      display:inline-block; font-family:var(--mono); font-size:11px;
+      color:var(--indigo); background:var(--indigo-lt);
+      border:1px solid rgba(79,110,247,0.2);
+      padding:3px 9px; border-radius:6px;
+    }
+    .finding-name { font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; }
+    .finding-sub  { font-family:var(--mono); font-size:10px; color:var(--text3); line-height:1.4; }
+    .owasp-tag {
+      font-family:var(--mono); font-size:9px; color:var(--teal);
+      background:var(--teal-lt); border:1px solid rgba(13,184,127,0.2);
+      padding:2px 7px; border-radius:4px; display:inline-block; margin-top:4px;
+    }
+    .badge {
+      display:inline-block; font-size:10px; font-weight:700;
+      letter-spacing:0.5px; text-transform:uppercase;
+      padding:4px 10px; border-radius:6px;
+    }
+    .badge.critical { background:var(--red-lt);   color:var(--red);   border:1px solid rgba(240,62,90,0.2); }
+    .badge.high     { background:var(--amber-lt);  color:var(--amber); border:1px solid rgba(245,158,11,0.25); }
+    .badge.medium   { background:#fffbf0;           color:#d97706;      border:1px solid rgba(217,119,6,0.2); }
+    .badge.low      { background:var(--blue-lt);   color:var(--blue);  border:1px solid rgba(59,130,246,0.2); }
+    .cve-link {
+      font-family:var(--mono); font-size:10px; color:var(--teal);
+      text-decoration:none; background:var(--teal-lt);
+      border:1px solid rgba(13,184,127,0.2);
+      padding:3px 8px; border-radius:6px; transition:background 0.15s;
+      display:inline-block;
+    }
+    .cve-link:hover { background:#d0f5ec; }
+
+    /* ── OPEN PORTS GRID ── */
+    .ports-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+      gap:12px;
+    }
+    .port-card {
+      background:var(--surface); border:1.5px solid var(--border);
+      border-top:4px solid var(--border); border-radius:12px;
+      padding:16px; box-shadow:var(--shadow);
+      transition:transform 0.15s, box-shadow 0.15s;
+    }
+    .port-card:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(79,110,247,0.14); }
+    .port-card.risky { border-top-color:var(--red); }
+    .port-card.ok    { border-top-color:var(--teal); }
+    .port-num    { font-family:var(--mono); font-size:22px; color:var(--indigo); }
+    .port-svc    { font-size:13px; font-weight:700; color:var(--text); margin:4px 0 2px; }
+    .port-banner { font-family:var(--mono); font-size:9px; color:var(--text3);
+                   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* ── SSL INFO ── */
+    .ssl-card {
+      background:var(--teal-lt); border:1px solid rgba(13,184,127,0.25);
+      border-radius:12px; padding:16px 20px; margin-bottom:28px;
+      font-family:var(--mono); font-size:11px; color:var(--text2);
+      display:none;
+    }
+    .ssl-card.visible { display:block; }
+    .ssl-card strong { color:var(--teal); }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-row">
+      <div class="logo-badge">🛡</div>
+      <div class="logo-text">WAVT</div>
+    </div>
+    <div class="tagline">WEB APP VULNERABILITY TESTER</div>
+  </header>
+
+  <!-- SCAN FORM -->
+  <div class="card">
+    <div class="card-title">Enter Target</div>
+    <div class="input-row">
+      <input class="target-input" id="targetInput" type="text"
+             placeholder="e.g. scanme.nmap.org or testphp.vulnweb.com"/>
+      <button class="scan-btn" id="scanBtn" onclick="startScan()">Scan ▶</button>
+    </div>
+    <div class="warning">⚠ Only scan systems you own or have permission to test</div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-msg" id="statusMsg">
+    <div class="spinner"></div>
+    Scanning <strong id="scanningTarget"></strong> — this takes 10–20 seconds...
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- Target info bar -->
+    <div class="info-bar" id="infoBar"></div>
+
+    <!-- Summary -->
+    <div class="section-title">Summary</div>
+    <div class="summary-row">
+      <div class="count-box critical"><div class="count-num" id="countCritical">0</div><div class="count-label">Critical</div></div>
+      <div class="count-box high">    <div class="count-num" id="countHigh">0</div>    <div class="count-label">High</div></div>
+      <div class="count-box medium">  <div class="count-num" id="countMedium">0</div>  <div class="count-label">Medium</div></div>
+      <div class="count-box low">     <div class="count-num" id="countLow">0</div>     <div class="count-label">Low</div></div>
+    </div>
+
+    <!-- SSL cert info (shown if HTTPS is available) -->
+    <div class="ssl-card" id="sslCard"></div>
+
+    <!-- Findings table -->
+    <div class="section-title">Findings</div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span>Port</span><span>Finding</span><span>Severity</span><span>CVE / OWASP</span>
+      </div>
+      <div id="findingsBody"></div>
+    </div>
+
+    <!-- Open ports -->
+    <div class="section-title">Open Ports</div>
+    <div class="ports-grid" id="portsGrid"></div>
+
+  </div>
+</div>
+
+<script>
+  async function startScan() {
+    const target = document.getElementById('targetInput').value.trim();
+    if (!target) { alert('Please enter a target.'); return; }
+
+    // Show scanning state
+    document.getElementById('scanningTarget').textContent = target;
+    document.getElementById('statusMsg').classList.add('visible');
+    document.getElementById('errorBox').classList.remove('visible');
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('scanBtn').disabled = true;
+
+    try {
+      // ── Real fetch to Flask backend ──
+      // This sends a POST request to /api/scan with the target
+      const response = await fetch('/api/scan', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ target: target })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+
+      renderResults(data);
+
+    } catch (err) {
+      showError('Could not connect to scanner. Is the Flask server running?');
+    } finally {
+      document.getElementById('statusMsg').classList.remove('visible');
+      document.getElementById('scanBtn').disabled = false;
+    }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '❌ ' + msg;
+    box.classList.add('visible');
+  }
+
+  function renderResults(data) {
+    // ── Info bar ──
+    document.getElementById('infoBar').innerHTML =
+      `<span>Target: <strong>${data.target}</strong></span>
+       <span>IP: <strong>${data.ip}</strong></span>
+       <span>Open Ports: <strong>${data.open_ports.length}</strong></span>
+       <span>Findings: <strong>${data.findings.length}</strong></span>`;
+
+    // ── Summary counts ──
+    const c = data.counts;
+    document.getElementById('countCritical').textContent = c.critical;
+    document.getElementById('countHigh').textContent     = c.high;
+    document.getElementById('countMedium').textContent   = c.medium;
+    document.getElementById('countLow').textContent      = c.low;
+
+    // ── SSL cert info ──
+    const cert = data.cert_info;
+    const sslCard = document.getElementById('sslCard');
+    if (cert && cert.expires) {
+      const daysColor = cert.days_left < 30 ? 'color:var(--red)' : 'color:var(--teal)';
+      sslCard.innerHTML =
+        `🔒 <strong>SSL Certificate</strong> &nbsp;|&nbsp;
+         Expires: <strong>${cert.expires}</strong> &nbsp;|&nbsp;
+         Days left: <strong style="${daysColor}">${cert.days_left}</strong> &nbsp;|&nbsp;
+         TLS: <strong>${cert.tls_version || 'N/A'}</strong>`;
+      sslCard.classList.add('visible');
+    } else {
+      sslCard.classList.remove('visible');
+    }
+
+    // ── Findings table ──
+    const body = document.getElementById('findingsBody');
+    body.innerHTML = '';
+
+    if (data.findings.length === 0) {
+      body.innerHTML =
+        '<div style="padding:20px;font-family:var(--mono);font-size:12px;color:var(--text3)">✅ No vulnerabilities detected.</div>';
+    } else {
+      data.findings.forEach(f => {
+        const sev = f.severity.toLowerCase();
+        const row = document.createElement('div');
+        row.className = 'table-row';
+        row.innerHTML = `
+          <span><span class="port-chip">${f.port}</span></span>
+          <div>
+            <div class="finding-name">${f.title}</div>
+            <div class="finding-sub">${f.description}</div>
+            ${f.owasp ? `<span class="owasp-tag">${f.owasp}</span>` : ''}
+          </div>
+          <span><span class="badge ${sev}">${f.severity}</span></span>
+          <span>
+            ${f.cve
+              ? `<a class="cve-link" href="https://nvd.nist.gov/vuln/detail/${f.cve}" target="_blank">${f.cve}</a>`
+              : `<span style="color:var(--text3);font-family:var(--mono);font-size:11px">—</span>`}
+          </span>`;
+        body.appendChild(row);
+      });
+    }
+
+    // ── Open ports grid ──
+    const grid = document.getElementById('portsGrid');
+    grid.innerHTML = '';
+    const riskyPorts = new Set(data.findings.map(f => f.port));
+    data.open_ports.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'port-card ' + (riskyPorts.has(p.port) ? 'risky' : 'ok');
+      card.innerHTML = `
+        <div class="port-num">${p.port}</div>
+        <div class="port-svc">${p.service}</div>
+        <div class="port-banner">${p.banner || '—'}</div>`;
+      grid.appendChild(card);
+    });
+
+    document.getElementById('results').classList.add('visible');
+
+    // Scroll to results
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Allow pressing Enter to scan
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('targetInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') startScan();
+    });
+  });
+</script>
+</body>
+</html>
